@@ -79,7 +79,7 @@ npm i -g json
 check 5 "error while installing json"
 
 # Modify package.json
-json -I -f package.json -e "this.main = 'app.js'; this.scripts = {}; this.scripts.build = 'webpack'; this.scripts.serve = 'webpack serve';"
+json -I -f package.json -e "this.main = 'src/app.js'; this.scripts = {}; this.scripts.build = 'webpack'; this.scripts.serve = 'webpack serve';"
 check 6 "error while modifying package.json"
 
 # Create webpack.config.js
