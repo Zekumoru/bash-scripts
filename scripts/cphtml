@@ -1,0 +1,244 @@
+#!/bin/bash
+#
+# cphtml (Create Project HTML)
+# @author Zekumoru Dragonhart
+# @description Automate the process of creating a new project and setting up its webpack, ESLint, and Prettier.
+#
+# Error Codes
+# 1: Function errors. Should only be used internally.
+# 2: First argument is required for the name of the project.
+# 3: Project's folder already exists. Open it VSCode instead.
+# 4: Unable to download .gitignore.
+# 5: Unable to install npm packages.
+# 6: Cannot modify package.json using json.
+# 7: Unable to create webpack.config.js.
+# 8: Unable to create 'src' folder.
+# 9: Unable to create source files.
+# 10: Unable to initialize and setup ESLint properly, may causes of:
+#      - Did not choose .json for the ESLint config file.
+#      - The json npm package could not modify the ESLint config file.
+#      - A problem arose with ESLint's initialization itself. 
+# 11: Unable to create .vscode/settings.json file.
+# 12: Unable to properly create .prettierignore file.
+# 13: Unable to properly set up git hook for Prettier.
+#
+
+COMMAND_NAME=${0##*/}
+PROJECT_NAME=$1
+
+function log() {
+  echo $COMMAND_NAME: $1
+}
+
+function check() {
+  if [ $? -ne 0 ] ; then
+    cd $PARENT_DIR
+    log "$2"
+    exit $1
+  fi
+}
+
+if [ -z $PROJECT_NAME ] ; then 
+  log "missing first argument, provide the name of the project"
+  exit 2
+fi
+
+PARENT_DIR="$PWD"
+PROJECT_DIR="$PARENT_DIR/$PROJECT_NAME"
+
+if [ -d $PROJECT_DIR ] ; then
+  log "project already exists, opening in vscode instead"
+  code $PROJECT_DIR
+  exit 0
+fi
+
+mkdir $PROJECT_NAME
+
+if ! [ -d $PROJECT_DIR ] ; then
+  log "an error has occurred creating $PROJECT_NAME"
+  exit 3
+fi
+
+# Setting up npm and git
+cd $PROJECT_DIR
+npm init -y
+git init .
+
+# Download Node.js .gitignore
+wget -O .gitignore "https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore"
+check 4 "error while downloading .gitignore at https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore"
+
+# Install all dependencies
+npm i -D webpack webpack-cli webpack-dev-server style-loader css-loader html-webpack-plugin
+check 5 "error while installing dev dependencies"
+
+npm i -P @mdi/font normalize.css
+check 5 "error while installing prod dependencies"
+
+npm i -g json
+check 5 "error while installing json"
+
+# Modify package.json
+json -I -f package.json -e "this.main = 'app.js'; this.scripts = {}; this.scripts.build = 'webpack'; this.scripts.serve = 'webpack serve';"
+check 6 "error while modifying package.json"
+
+# Create webpack.config.js
+cat > $PROJECT_DIR/webpack.config.js << EndOfFile
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+module.exports = {
+  mode: 'development',
+  entry: {
+    build: path.resolve(__dirname, 'src/app.js'),
+  },
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: '[name].[contenthash].js',
+    assetModuleFilename: '[name][ext]',
+    clean: true,
+  },
+  optimization: {
+    splitChunks: {
+      chunks: 'all',
+    },
+  },
+  devtool: 'inline-source-map',
+  devServer: {
+    static: {
+      directory: path.resolve(__dirname, 'dist'),
+    },
+    watchFiles: [
+      path.resolve(__dirname, 'src/*.html'),
+    ],
+    port: 3001,
+    open: true,
+    hot: true,
+    compress: true,
+    historyApiFallback: true,
+  },
+  module: {
+    rules: [
+      {
+        test: /\.css$/,
+        use: [
+          'style-loader',
+          'css-loader',
+        ],
+      },
+      {
+        test: /\.(png|jpg|jpeg|svg|gif)$/i,
+        type: 'asset/resource',
+      },
+    ],
+  },
+  plugins: [
+    new HtmlWebpackPlugin({
+      title: '$PROJECT_NAME',
+      filename: 'index.html',
+      template: path.resolve(__dirname, 'src/template.html'),
+    }),
+  ],
+};
+EndOfFile
+
+ls $PROJECT_DIR/webpack.config.js
+check 7 "error while creating webpack.config.js"
+
+# Create source files
+SOURCE_DIR="$PROJECT_DIR/src"
+mkdir $SOURCE_DIR
+
+if ! [ -d $SOURCE_DIR ] ; then
+  log "error while creating source files, cannot create 'src' folder"
+  exit 8
+fi
+
+cat > $SOURCE_DIR/template.html << EndOfFile
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%=htmlWebpackPlugin.options.title%></title>
+  </head>
+  <body></body>
+</html>
+EndOfFile
+
+cat > $SOURCE_DIR/style.css << EndOfFile
+EndOfFile
+
+cat > $SOURCE_DIR/app.js << EndOfFile
+import '@mdi/font/css/materialdesignicons.css';
+import 'normalize.css';
+import './style.css';
+EndOfFile
+
+cd $SOURCE_DIR
+ls template.html style.css app.js
+check 9 "error while creating source files"
+
+# Setting up ESLint
+cd $PROJECT_DIR
+
+if [ "$2" = "-s" -o "$2" = "--skip" ] ; then
+
+npm i -D eslint eslint-plugin-import eslint-config-airbnb-base
+cat > $SOURCE_DIR/.eslintrc.json << EndOfFile
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "extends": "airbnb-base",
+  "overrides": [],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "rules": {
+    "lines-between-class-members": "off",
+    "no-param-reassign": "off",
+    "no-shadow": "off",
+    "no-use-before-define": "off",
+    "func-names": "off",
+    "no-plusplus": "off",
+    "class-methods-use-this": "off",
+    "no-new": "off",
+    "consistent-return": "off",
+    "max-len": "off",
+    "no-continue": "off"
+  }
+}
+EndOfFile
+
+else
+  clear -x
+  echo "Now setting up ESLint..."
+  echo "Choose the JSON format as config file for ESLint, otherwise setup will halt."
+  npm init @eslint/config
+  json -I -f .eslintrc.json -e "this.rules = {'lines-between-class-members':'off','no-param-reassign':'off','no-shadow':'off','no-use-before-define':'off','func-names':'off','no-plusplus':'off','class-methods-use-this':'off','no-new':'off','consistent-return':'off','max-len':'off','no-continue':'off',}"
+fi
+
+check 10 "error while initializing and setting up eslint"
+mkdir .vscode && echo '{"editor.codeActionsOnSave":{"source.fixAll.eslint":true},"eslint.validate":["javascript"]}' > .vscode/settings.json && json -I -f .vscode/settings.json
+check 11 "error while creating vscode settings.json"
+
+# Setting up Prettier
+cd $PROJECT_DIR
+npm install --save-dev --save-exact prettier
+echo $'# Ignore JS files for Eslint to format\n*.js\n\n# Ignore HTML files\n*.html\n' > .prettierignore && cat .gitignore >> .prettierignore
+check 12 "error while creating .prettierignore"
+
+npm install --save-dev husky lint-staged ; npx husky install ; npm pkg set scripts.prepare="husky install" ; npx husky add .husky/pre-commit "npx lint-staged" && json -I -f package.json -e "this['lint-staged'] = {'**/*': 'prettier --write --ignore-unknown'}"
+check 13 "error while creating git hook for prettier"
+
+# Commit initial
+git add . && git commit -m "Initial commit"
+
+cd $PARENT_DIR
+log "Successfully created $PROJECT_NAME. Opening it now in VSCode..."
+code $PROJECT_DIR

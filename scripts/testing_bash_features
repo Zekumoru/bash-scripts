@@ -1,0 +1,29 @@
+#!/bin/bash
+
+COMMAND_NAME=${0##*/}
+function log() {
+  echo $COMMAND_NAME: $1
+}
+
+function checkInstallResult() {
+  if [ $? -ne 0 ] ; then
+    log $1
+    exit 4
+  fi
+}
+
+str=$(cat << EOF
+echo hi
+EOF
+)
+
+function check() {
+  if [ $? -ne 0 ] ; then
+    log "$2"
+    exit $1
+  fi
+}
+
+if [ "$1" = "-s" -o "$1" = "--skip" ] ; then
+  log 'skipping'
+fi

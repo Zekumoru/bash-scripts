@@ -1,0 +1,70 @@
+#!/bin/bash
+
+PGDIR="$HOME/repos/playground"
+
+if ! [ -d $PGDIR ] ; then
+  echo cpg: missing playground repository: $PGDIR
+  exit 1
+fi
+
+if [ -z "$1" ] ; then 
+  echo cpg: missing first argument
+  exit 2
+fi
+
+newRepoDir="$PGDIR/$1"
+
+if [ -d $newRepoDir ] ; then
+  echo Repository already exists. Opening in vscode instead.
+  code $newRepoDir
+  exit 0
+fi
+
+mkdir $newRepoDir
+
+if ! [ -d $newRepoDir ] ; then
+  echo cpg: error creating $1
+  exit 3
+fi
+
+title=$2
+if [ -z "$2" ] ; then
+  title=$1
+fi
+
+cat > $newRepoDir/index.html << EndOfFile
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>$title</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="./script.js" defer></script>
+  </head>
+  <body>
+    
+  </body>
+</html>
+EndOfFile
+
+cat > $newRepoDir/styles.css << EndOfFile
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+html {
+  background-color: #18191a;
+  color: #e6e6e6;
+}
+EndOfFile
+
+touch $newRepoDir/script.js
+
+echo cpg: Successfully created $1 
+
+code $newRepoDir
