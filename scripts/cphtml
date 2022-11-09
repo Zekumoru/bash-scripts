@@ -5,9 +5,10 @@
 # @description Automate the process of creating a new project and setting up its webpack, ESLint, and Prettier.
 #
 # Error Codes
+# 0: No error.
 # 1: Function errors. Should only be used internally.
 # 2: First argument is required for the name of the project.
-# 3: Project's folder already exists. Open it VSCode instead.
+# 3: Unable to create folder and/or initialize npm/git.
 # 4: Unable to download .gitignore.
 # 5: Unable to install npm packages.
 # 6: Cannot modify package.json using json.
@@ -62,7 +63,9 @@ fi
 # Setting up npm and git
 cd $PROJECT_DIR
 npm init -y
+check 3 "error while initializing npm"
 git init .
+check 3 "error while initializing git"
 
 # Download Node.js .gitignore
 wget -O .gitignore "https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore"
