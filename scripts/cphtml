@@ -192,7 +192,7 @@ cd $PROJECT_DIR
 if [ "$2" = "-s" -o "$2" = "--skip" ] ; then
 
 npm i -D eslint eslint-plugin-import eslint-config-airbnb-base
-cat > $SOURCE_DIR/.eslintrc.json << EndOfFile
+cat > $PROJECT_DIR/.eslintrc.json << EndOfFile
 {
   "env": {
     "browser": true,
