@@ -24,6 +24,8 @@
 # 13: Unable to properly set up git hook for Prettier.
 #
 
+NODEJS_GITIGNORE_LINK="https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore"
+
 COMMAND_NAME=${0##*/}
 PROJECT_NAME=$1
 
@@ -68,8 +70,8 @@ git init .
 check 3 "error while initializing git"
 
 # Download Node.js .gitignore
-wget -O .gitignore "https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore"
-check 4 "error while downloading .gitignore at https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore"
+wget -O .gitignore $NODEJS_GITIGNORE_LINK
+check 4 "error while downloading .gitignore at $NODEJS_GITIGNORE_LINK"
 
 # Install all dependencies
 npm i -D webpack webpack-cli webpack-dev-server style-loader css-loader html-webpack-plugin
