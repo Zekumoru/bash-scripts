@@ -4,6 +4,35 @@
 # @author Zekumoru Dragonhart
 # @description Automate the process of creating a new project and setting up its webpack, ESLint, and Prettier.
 #
+# Usage
+#
+#     cphtml <project-name|ssh-github-link> [--skip|-s]
+#       [--title|-t <title>] [--github|-g <ssh-github-link>] 
+#       [--name|-n <name>]
+#
+#   <project-name|ssh-github-link>
+#     Provide either the project's name or clone a
+#     repository from GitHub.
+#     GitHub repository MUST be empty (README excluded).
+#
+#   [--skip|-s]
+#     Skips ESLint init's questionnaire.
+#
+#   [--title|-t <title>]
+#     Changes the title as seen on the HTML document's tab.
+#
+#   [--github|-g <ssh-github-link>] 
+#     Clone <ssh-github-link> repository.
+#     GitHub repository MUST be empty (README excluded).
+#
+#     If instead of <project-name>, a GitHub repo link
+#     is given, this command is ignored.
+#
+#   [--name|-n <name>]
+#     Sets the name of the project's directory.
+#
+#     If <project-name> is given, this command is ignored.
+# 
 # Error Codes
 # 0: No error.
 # 1: Function errors. Should only be used internally.
@@ -143,7 +172,7 @@ if [[ "$PROJECT_NAME" =~ ^git@github\.com.* ]] ; then
     [[ "git@github.com:Zekumoru/Zekumoru.git" =~ \/.*\.git$ ]]
     PROJECT_NAME="${BASH_REMATCH:1:-4}"
   fi
-  
+
   PROJECT_DIR="$PARENT_DIR/$PROJECT_NAME"
 else
   mkdir $PROJECT_NAME
