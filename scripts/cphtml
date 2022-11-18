@@ -7,8 +7,8 @@
 # Error Codes
 # 0: No error.
 # 1: Function errors. Should only be used internally.
-# 2: First argument is required for the name of the project.
-# 3: Unable to create folder and/or initialize npm/git.
+# 2: Missing project name or it is invalid.
+# 3: Unable initialize npm/git.
 # 4: Unable to download .gitignore.
 # 5: Unable to install npm packages.
 # 6: Cannot modify package.json using json.
@@ -23,69 +23,132 @@
 # 12: Unable to properly create .prettierignore file.
 # 13: Unable to properly set up git hook for Prettier.
 #
+# Options error codes
+# 90: Unknown option
+# 91: Invalid argument
+# 92: Option duplicate
+#
 
+# Color constants
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+NO_COLOR="\033[0m"
+
+# Constants
 NODEJS_GITIGNORE_LINK="https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore"
 
 COMMAND_NAME=${0##*/}
 PROJECT_NAME=$1
 
-function log() {
-  echo $COMMAND_NAME: $1
-}
-
-function check() {
-  if [ $? -ne 0 ] ; then
-    cd $PARENT_DIR
-    log "$2"
-    exit $1
-  fi
-}
-
-if [ -z $PROJECT_NAME ] ; then 
-  log "missing first argument, provide the name of the project"
-  exit 2
-fi
-
 PARENT_DIR="$PWD"
 PROJECT_DIR="$PARENT_DIR/$PROJECT_NAME"
 
+# Utility functions
+function log() {
+  echo -e "$2$COMMAND_NAME: $1${NO_COLOR}"
+}
+
+function checkIfError() {
+  if [ $? -ne 0 ] ; then
+    exitCode="$1"
+    errorMessage="$2"
+
+    cd $PARENT_DIR
+    raiseError $exitCode "$errorMessage"
+    exit $exitCode
+  fi
+}
+
+function raiseError() {
+  exitCode="$1"
+  errorMessage="$2"
+  echo -e "${RED}ERROR: $COMMAND_NAME: $errorMessage${NO_COLOR}"
+  exit $exitCode
+}
+
+function checkIfErrorArgument() {
+  option="$1"
+  argument="$2"
+  errorMessage="$3"
+  if [ "$argument" == "" ] ; then
+    raiseError 91 "$option: missing argument"
+  elif [[ "$argument" =~ ^-.* ]] ; then
+    raiseError 91 "$errorMessage"
+  fi
+}
+
+function checkIfErrorOptionDuplicate() {
+  option=$1
+  optionValue=$2
+  if [ "$optionValue" != "" ] && [ $optionValue -eq 1 ] ; then 
+    raiseError 92 "$option: duplication option"
+  fi
+}
+
+while [ true ] ; do
+  option="$2"
+  argument="$3"
+  case "$option" in
+    "--skip"|"-s")
+      checkIfErrorOptionDuplicate "$option" $SKIP_OPT
+      SKIP_OPT=1
+      ;;
+    "--title"|"-t")
+      TITLE_OPT=1
+      checkIfErrorArgument "$option" "$argument" "$option: invalid argument"
+      TITLE="$argument"
+      shift 1
+      ;;
+    "--github-clone"|"-gc")
+      GITHUB_CLONE_OPT=1
+      checkIfErrorArgument "$option" "$argument" "invalid github clone url"
+      GITHUB_CLONE_URL="$argument"
+      shift 1
+      ;;
+    "")
+      break
+      ;;
+    *)
+      raiseError 90 "unknown option: $option"
+      ;;
+  esac
+  shift 1
+done
+
+# Main
 if [ -d $PROJECT_DIR ] ; then
-  log "project already exists, opening in vscode instead"
+  echo "Project already exists, opening in vscode instead"
   code $PROJECT_DIR
   exit 0
 fi
 
 mkdir $PROJECT_NAME
-
-if ! [ -d $PROJECT_DIR ] ; then
-  log "an error has occurred creating $PROJECT_NAME"
-  exit 3
-fi
+checkIfError 2 "invalid project name: $PROJECT_NAME"
 
 # Setting up npm and git
 cd $PROJECT_DIR
 npm init -y
-check 3 "error while initializing npm"
+checkIfError 3 "error while initializing npm"
 git init .
-check 3 "error while initializing git"
+checkIfError 3 "error while initializing git"
 
 # Download Node.js .gitignore
 wget -O .gitignore $NODEJS_GITIGNORE_LINK
-check 4 "error while downloading .gitignore at $NODEJS_GITIGNORE_LINK"
+checkIfError 4 "error while downloading .gitignore at $NODEJS_GITIGNORE_LINK"
 
 # Install all dependencies
 npm i -D webpack webpack-cli webpack-dev-server style-loader css-loader html-webpack-plugin
-check 5 "error while installing dev dependencies"
+checkIfError 5 "error while installing dev dependencies"
 
 npm i -P @mdi/font normalize.css
-check 5 "error while installing prod dependencies"
+checkIfError 5 "error while installing prod dependencies"
 
 npm i -g json
-check 5 "error while installing json"
+checkIfError 5 "error while installing json"
 
 # Modify package.json
 json -I -f package.json -e "this.main = 'src/app.js'; this.scripts = {}; this.scripts.build = 'webpack'; this.scripts.serve = 'webpack serve';"
-check 6 "error while modifying package.json"
+checkIfError 6 "error while modifying package.json"
 
 # Create webpack.config.js
 cat > $PROJECT_DIR/webpack.config.js << EndOfFile
@@ -148,15 +211,14 @@ module.exports = {
 EndOfFile
 
 ls $PROJECT_DIR/webpack.config.js
-check 7 "error while creating webpack.config.js"
+checkIfError 7 "error while creating webpack.config.js"
 
 # Create source files
 SOURCE_DIR="$PROJECT_DIR/src"
 mkdir $SOURCE_DIR
 
 if ! [ -d $SOURCE_DIR ] ; then
-  log "error while creating source files, cannot create 'src' folder"
-  exit 8
+  raiseError 8 "cannot create 'src' folder"
 fi
 
 cat > $SOURCE_DIR/template.html << EndOfFile
@@ -184,7 +246,7 @@ EndOfFile
 
 cd $SOURCE_DIR
 ls template.html style.css app.js
-check 9 "error while creating source files"
+checkIfError 9 "error while creating source files"
 
 # Setting up ESLint
 cd $PROJECT_DIR
@@ -228,22 +290,22 @@ else
   json -I -f .eslintrc.json -e "this.rules = {'lines-between-class-members':'off','no-param-reassign':'off','no-shadow':'off','no-use-before-define':'off','func-names':'off','no-plusplus':'off','class-methods-use-this':'off','no-new':'off','consistent-return':'off','max-len':'off','no-continue':'off',}"
 fi
 
-check 10 "error while initializing and setting up eslint"
+checkIfError 10 "error while initializing and setting up eslint"
 mkdir .vscode && echo '{"editor.codeActionsOnSave":{"source.fixAll.eslint":true},"eslint.validate":["javascript"]}' > .vscode/settings.json && json -I -f .vscode/settings.json
-check 11 "error while creating vscode settings.json"
+checkIfError 11 "error while creating vscode settings.json"
 
 # Setting up Prettier
 cd $PROJECT_DIR
 npm install --save-dev --save-exact prettier
 echo $'# Ignore JS files for Eslint to format\n*.js\n\n# Ignore HTML files\n*.html\n' > .prettierignore && cat .gitignore >> .prettierignore
-check 12 "error while creating .prettierignore"
+checkIfError 12 "error while creating .prettierignore"
 
 npm install --save-dev husky lint-staged ; npx husky install ; npm pkg set scripts.prepare="husky install" ; npx husky add .husky/pre-commit "npx lint-staged" && json -I -f package.json -e "this['lint-staged'] = {'**/*': 'prettier --write --ignore-unknown'}"
-check 13 "error while creating git hook for prettier"
+checkIfError 13 "error while creating git hook for prettier"
 
 # Commit initial
 git add . && git commit -m "Initial commit"
 
 cd $PARENT_DIR
-log "Successfully created $PROJECT_NAME. Opening it now in VSCode..."
+log "Successfully created $PROJECT_NAME. Now opening in vscode..." $GREEN
 code $PROJECT_DIR
