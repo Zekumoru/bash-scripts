@@ -100,7 +100,7 @@ while [ true ] ; do
       TITLE="$argument"
       shift 1
       ;;
-    "--github-clone"|"-gc")
+    "--github"|"-g")
       GITHUB_CLONE_OPT=1
       checkIfErrorArgument "$option" "$argument" "invalid github clone url"
       GITHUB_CLONE_URL="$argument"
