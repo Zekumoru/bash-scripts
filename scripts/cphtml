@@ -22,11 +22,12 @@
 # 11: Unable to create .vscode/settings.json file.
 # 12: Unable to properly create .prettierignore file.
 # 13: Unable to properly set up git hook for Prettier.
+# 20: Cannot clone repository from git.
 #
 # Options error codes
-# 90: Unknown option
-# 91: Invalid argument
-# 92: Option duplicate
+# 90: Unknown option.
+# 91: Invalid argument.
+# 92: Option duplicate.
 #
 
 # Color constants
@@ -115,22 +116,41 @@ while [ true ] ; do
   shift 1
 done
 
-# Main
+# Create/Open project directory
 if [ -d $PROJECT_DIR ] ; then
   echo "Project already exists, opening in vscode instead"
   code $PROJECT_DIR
   exit 0
 fi
 
-mkdir $PROJECT_NAME
-checkIfError 2 "invalid project name: $PROJECT_NAME"
+# Is given project name a github repo?
+if [[ "$PROJECT_NAME" =~ ^git@github\.com.* ]] ; then
+  GITHUB_CLONE_OPT=""
+  GITHUB_CLONE_URL="$PROJECT_NAME"
+  git clone $GITHUB_CLONE_URL
+  checkIfError 20 "cannot clone: $GITHUB_CLONE_URL"
+  exit 0
+else
+  mkdir $PROJECT_NAME
+  checkIfError 2 "invalid project name: $PROJECT_NAME"
+
+fi
+
+# Clone from online github repo?
+if [ "$GITHUB_CLONE_OPT" != "" ] && [ $GITHUB_CLONE_OPT -eq 1 ] ; then
+  git clone $GITHUB_CLONE_URL $PROJECT_DIR
+  checkIfError 20 "cannot clone: $GITHUB_CLONE_URL"
+fi
 
 # Setting up npm and git
 cd $PROJECT_DIR
 npm init -y
 checkIfError 3 "error while initializing npm"
-git init .
-checkIfError 3 "error while initializing git"
+
+if [ "$GITHUB_CLONE_OPT" == "" ] ; then
+  git init .
+  checkIfError 3 "error while initializing git"if [ "$GITHUB_CLONE_OPT" != "" ]
+fi
 
 # Download Node.js .gitignore
 wget -O .gitignore $NODEJS_GITIGNORE_LINK
