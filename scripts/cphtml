@@ -151,6 +151,12 @@ json -I -f package.json -e "this.main = 'src/app.js'; this.scripts = {}; this.sc
 checkIfError 6 "error while modifying package.json"
 
 # Create webpack.config.js
+if [ "$TITLE_OPT" != "" ] && [ $TITLE_OPT == 1 ] ; then
+  title="$TITLE"
+else
+  title="$PROJECT_NAME"
+fi
+
 cat > $PROJECT_DIR/webpack.config.js << EndOfFile
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -202,7 +208,7 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-      title: '$PROJECT_NAME',
+      title: '$title',
       filename: 'index.html',
       template: path.resolve(__dirname, 'src/template.html'),
     }),
@@ -251,7 +257,7 @@ checkIfError 9 "error while creating source files"
 # Setting up ESLint
 cd $PROJECT_DIR
 
-if [ "$2" = "-s" -o "$2" = "--skip" ] ; then
+if [  "$SKIP_OPT" != "" ] && [ $SKIP_OPT -eq 1 ] ; then
 
 npm i -D eslint eslint-plugin-import eslint-config-airbnb-base
 cat > $PROJECT_DIR/.eslintrc.json << EndOfFile
