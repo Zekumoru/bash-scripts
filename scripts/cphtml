@@ -125,7 +125,7 @@ while [ true ] ; do
   shift 1
 done
 
-# Create/Open project directory
+# Open project directory if already exists
 if [ -d $PROJECT_DIR ] ; then
   echo "Project already exists, opening in vscode instead"
   code $PROJECT_DIR
@@ -134,11 +134,17 @@ fi
 
 # Is given project name a github repo?
 if [[ "$PROJECT_NAME" =~ ^git@github\.com.* ]] ; then
-  GITHUB_CLONE_OPT=""
+  GITHUB_CLONE_OPT=1
   GITHUB_CLONE_URL="$PROJECT_NAME"
-  git clone $GITHUB_CLONE_URL $NAME
-  checkIfError 20 "cannot clone: $GITHUB_CLONE_URL"
-  exit 0
+
+  if [ "$NAME_OPT" != "" ] && [ $NAME_OPT -eq 1 ] ; then 
+    PROJECT_NAME="$NAME"
+  else
+    [[ "git@github.com:Zekumoru/Zekumoru.git" =~ \/.*\.git$ ]]
+    PROJECT_NAME="${BASH_REMATCH:1:-4}"
+  fi
+  
+  PROJECT_DIR="$PARENT_DIR/$PROJECT_NAME"
 else
   mkdir $PROJECT_NAME
   checkIfError 2 "invalid project name: $PROJECT_NAME"
