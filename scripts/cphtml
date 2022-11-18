@@ -74,6 +74,9 @@ function checkIfErrorArgument() {
   if [ "$argument" == "" ] ; then
     raiseError 91 "$option: missing argument"
   elif [[ "$argument" =~ ^-.* ]] ; then
+    if [ "$errorMessage" == "" ] ; then
+      raiseError 91 "$option: invalid argument: $argument"
+    fi
     raiseError 91 "$errorMessage"
   fi
 }
@@ -96,7 +99,7 @@ while [ true ] ; do
       ;;
     "--title"|"-t")
       TITLE_OPT=1
-      checkIfErrorArgument "$option" "$argument" "$option: invalid argument"
+      checkIfErrorArgument "$option" "$argument"
       TITLE="$argument"
       shift 1
       ;;
@@ -104,6 +107,12 @@ while [ true ] ; do
       GITHUB_CLONE_OPT=1
       checkIfErrorArgument "$option" "$argument" "invalid github clone url"
       GITHUB_CLONE_URL="$argument"
+      shift 1
+      ;;
+    "--name"|"-n")
+      NAME_OPT=1
+      checkIfErrorArgument "$option" "$argument"
+      NAME="$argument"
       shift 1
       ;;
     "")
@@ -127,13 +136,12 @@ fi
 if [[ "$PROJECT_NAME" =~ ^git@github\.com.* ]] ; then
   GITHUB_CLONE_OPT=""
   GITHUB_CLONE_URL="$PROJECT_NAME"
-  git clone $GITHUB_CLONE_URL
+  git clone $GITHUB_CLONE_URL $NAME
   checkIfError 20 "cannot clone: $GITHUB_CLONE_URL"
   exit 0
 else
   mkdir $PROJECT_NAME
   checkIfError 2 "invalid project name: $PROJECT_NAME"
-
 fi
 
 # Clone from online github repo?
